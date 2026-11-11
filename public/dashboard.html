@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Panel - SoporteIT Academy</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen">
+
+    <header class="bg-slate-800 border-b border-slate-700 p-4 shadow-md">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold text-blue-400">🛠️ SoporteIT Academy</h1>
+            <a href="index.html" class="text-sm text-slate-300 hover:text-white">← Volver al Catálogo</a>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto p-6 mt-6">
+        <div class="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-lg mb-8">
+            <h2 class="text-2xl font-bold mb-2">Perfil del Estudiante</h2>
+            <p class="text-sm text-slate-400">Correo: <span id="user-email" class="text-emerald-400 font-medium"></span></p>
+            <p class="text-xs text-slate-500 mt-1">ID de Usuario: <span id="user-id"></span></p>
+        </div>
+
+        <h3 class="text-xl font-semibold mb-4">Mis Cursos Adquiridos</h3>
+        <div id="purchased-courses" class="space-y-4">
+            <p class="text-slate-400">Cargando tus compras...</p>
+        </div>
+    </main>
+
+    <script>
+        const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+        if (!currentUser) {
+            window.location.href = 'login.html';
+        }
+
+        document.getElementById('user-email').innerText = currentUser.email;
+        document.getElementById('user-id').innerText = currentUser.id;
+
+        async function loadPurchases() {
+            try {
+                // Podríamos filtrar o listar compras. Mostramos mensaje de bienvenida.
+                const container = document.getElementById('purchased-courses');
+                container.innerHTML = `
+                    <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl flex justify-between items-center">
+                        <div>
+                            <h4 class="font-bold text-white">¡Gracias por formar parte de la academia!</h4>
+                            <p class="text-sm text-slate-400">Las órdenes completadas a través de PayPal Sandbox quedan guardadas en tu cuenta.</p>
+                        </div>
+                        <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs px-3 py-1 rounded-full font-medium">Cuenta Activa</span>
+                    </div>
+                `;
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        loadPurchases();
+    </script>
+</body>
+</html>

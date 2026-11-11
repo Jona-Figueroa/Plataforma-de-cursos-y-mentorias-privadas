@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso - SoporteIT Academy</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex items-center justify-center p-6">
+
+    <div class="bg-slate-800 border border-slate-700 p-8 rounded-2xl shadow-xl w-full max-w-md">
+        <div class="text-center mb-6">
+            <h1 class="text-2xl font-bold text-blue-400">🛠️ SoporteIT Academy</h1>
+            <p class="text-slate-400 text-sm mt-1">Accede a tu cuenta de estudiante</p>
+        </div>
+
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm text-slate-300 mb-1">Correo electrónico</label>
+                <input type="email" id="email" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500" placeholder="tucorreo@example.com">
+            </div>
+            <div>
+                <label class="block text-sm text-slate-300 mb-1">Contraseña</label>
+                <input type="password" id="password" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500" placeholder="••••••••">
+            </div>
+            
+            <div class="flex gap-3 pt-2">
+                <button onclick="login()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-medium py-3 rounded-lg transition shadow-md">Iniciar Sesión</button>
+                <button onclick="register()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-3 rounded-lg transition">Registrarse</button>
+            </div>
+        </div>
+
+        <div class="text-center mt-6">
+            <a href="index.html" class="text-sm text-slate-400 hover:text-blue-400 transition">← Volver al catálogo principal</a>
+        </div>
+    </div>
+
+    <script>
+        async function register() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            const res = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password, full_name: email.split('@')[0] })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert('¡Registro exitoso! Ya puedes iniciar sesión.');
+            } else {
+                alert('Error: ' + data.error);
+            }
+        }
+
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                localStorage.setItem('currentUser', JSON.stringify(data.user));
+                window.location.href = 'index.html';
+            } else {
+                alert('Error de acceso: ' + data.error);
+            }
+        }
+    </script>
+</body>
+</html>

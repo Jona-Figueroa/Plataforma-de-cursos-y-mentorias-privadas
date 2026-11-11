@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Capacítate IT - Cursos de Soporte Técnico</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SDK Oficial de PayPal (Usando un Client ID Sandbox público de prueba o el tuyo) -->
+    <script src="https://www.paypal.com/sdk/js?client-id=sb&currency=USD"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen">
+
+    <!-- Header / Navbar -->
+    <header class="bg-slate-800 border-b border-slate-700 p-4 shadow-md">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold text-blue-400">🛠️ SoporteIT Academy</h1>
+            <div id="auth-status" class="text-sm">
+                <span id="user-email-display" class="text-slate-300 mr-4">No ha iniciado sesión</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto p-6 grid grid-cols-1 md:grid-cols-3 gap-8 mt-6">
+        
+        <!-- Columna Izquierda: Cursos Disponibles -->
+        <section class="md:col-span-2">
+            <h2 class="text-2xl font-semibold mb-4 text-slate-200">Catálogo de Cursos</h2>
+            <div id="courses-container" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <p class="text-slate-400">Cargando cursos...</p>
+            </div>
+        </section>
+
+        <!-- Columna Derecha: Panel de Autenticación y Estado -->
+        <section class="bg-slate-800 p-6 rounded-xl border border-slate-700 h-fit shadow-lg">
+            <h3 class="text-xl font-semibold mb-4 text-blue-300">Acceso de Estudiante</h3>
+            
+            <!-- Formulario de Login -->
+            <div id="login-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm text-slate-400 mb-1">Correo electrónico</label>
+                    <input type="email" id="login-email" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white focus:outline-none focus:border-blue-500" placeholder="tucorreo@example.com">
+                </div>
+                <div>
+                    <label class="block text-sm text-slate-400 mb-1">Contraseña</label>
+                    <input type="password" id="login-password" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white focus:outline-none focus:border-blue-500" placeholder="••••••••">
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="loginUser()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-medium py-2 rounded transition">Iniciar Sesión</button>
+                    <button onclick="registerUser()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-2 rounded transition">Registrarse</button>
+                </div>
+            </div>
+
+            <!-- Panel de Usuario Conectado -->
+            <div id="user-panel" class="hidden space-y-4">
+                <div class="bg-slate-900 p-3 rounded border border-slate-700">
+                    <p class="text-xs text-slate-400">Usuario activo:</p>
+                    <p id="logged-email" class="text-sm font-medium text-green-400 truncate"></p>
+                </div>
+                <button onclick="logoutUser()" class="w-full bg-red-600/80 hover:bg-red-600 text-white font-medium py-2 rounded transition">Cerrar Sesión</button>
+            </div>
+
+            <!-- Sección de Estado de Compra -->
+            <div id="purchase-status" class="mt-6 pt-4 border-t border-slate-700">
+                <h4 class="text-sm font-semibold text-slate-300 mb-2">Estado de Transacción</h4>
+                <p id="status-message" class="text-xs text-slate-400">Inicia sesión para habilitar los botones de pago de PayPal.</p>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- JavaScript -->
+    <script>
+        let currentUser = null;
+        let cachedCourses = [];
+
+        // 1. Cargar Cursos
+        async function fetchCourses() {
+            try {
+                const res = await fetch('/api/courses');
+                cachedCourses = await res.json();
+                renderCourses();
+            } catch (err) {
+                console.error('Error al cargar cursos:', err);
+            }
+        }
+
+        // Renderizar cursos y sus botones de PayPal
+        function renderCourses() {
+            const container = document.getElementById('courses-container');
+            
+            if (cachedCourses.length === 0) {
+                container.innerHTML = '<p class="text-slate-400">No hay cursos disponibles.</p>';
+                return;
+            }
+
+            container.innerHTML = cachedCourses.map(course => `
+                <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-md flex flex-col justify-between">
+                    <img src="${course.image_url}" alt="${course.title}" class="h-36 w-full object-cover">
+                    <div class="p-4 flex-1 flex flex-col justify-between">
+                        <div>
+                            <h3 class="font-bold text-base text-white">${course.title}</h3>
+                            <p class="text-slate-400 text-xs mt-1 mb-3">${course.description}</p>
+                        </div>
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-lg font-bold text-emerald-400">$${course.price}</span>
+                            </div>
+                            <!-- Contenedor donde se renderizará el botón de PayPal -->
+                            <div id="paypal-button-container-${course.id}"></div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            // Si hay usuario logueado, dibujamos los botones de PayPal
+            if (currentUser) {
+                initPayPalButtons();
+            }
+        }
+
+        // 2. Inicializar Botones de PayPal Sandbox
+        function initPayPalButtons() {
+            cachedCourses.forEach(course => {
+                const containerId = `paypal-button-container-${course.id}`;
+                const container = document.getElementById(containerId);
+                if (!container) return;
+
+                container.innerHTML = ''; // Limpiar previo
+
+                paypal.Buttons({
+                    style: {
+                        layout: 'vertical',
+                        color: 'gold',
+                        shape: 'rect',
+                        label: 'pay'
+                    },
+                    createOrder: function(data, actions) {
+                        return actions.order.create({
+                            purchase_units: [{
+                                amount: {
+                                    value: course.price.toString()
+                                },
+                                description: course.title
+                            }]
+                        });
+                    },
+                    onApprove: function(data, actions) {
+                        return actions.order.capture().then(function(details) {
+                            // Pago aprobado por PayPal Sandbox exitosamente
+                            processSuccessfulPurchase(course.id, course.price, data.orderID);
+                        });
+                    },
+                    onError: function(err) {
+                        document.getElementById('status-message').innerText = '❌ Error en la pasarela de PayPal.';
+                        document.getElementById('status-message').className = 'text-xs text-red-400';
+                    }
+                }).render(`#${containerId}`);
+            });
+        }
+
+        // 3. Registrar Compra en el Backend / Supabase
+        async function processSuccessfulPurchase(courseId, price, paypalOrderId) {
+            const statusMsg = document.getElementById('status-message');
+            statusMsg.innerText = 'Registrando compra en la base de datos...';
+            statusMsg.className = 'text-xs text-yellow-400';
+
+            try {
+                const res = await fetch('/api/purchase', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: currentUser.id,
+                        course_id: courseId,
+                        amount: price,
+                        paypal_order_id: paypalOrderId
+                    })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    statusMsg.innerText = `✅ ¡Pago con PayPal exitoso! ID: ${data.purchase.paypal_order_id}`;
+                    statusMsg.className = 'text-xs text-emerald-400 font-semibold';
+                    alert('¡Felicidades! Curso adquirido correctamente a través de PayPal Sandbox.');
+                } else {
+                    statusMsg.innerText = `❌ Error al guardar: ${data.error}`;
+                    statusMsg.className = 'text-xs text-red-400';
+                }
+            } catch (err) {
+                statusMsg.innerText = '❌ Error de red al registrar la compra.';
+                statusMsg.className = 'text-xs text-red-400';
+            }
+        }
+
+        // 4. Registrar Usuario
+        async function registerUser() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            const res = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password, full_name: email.split('@')[0] })
+            });
+            const data = await res.json();
+            
+            if (res.ok) {
+                alert('¡Registro exitoso! Ya puedes iniciar sesión.');
+            } else {
+                alert('Error: ' + data.error);
+            }
+        }
+
+        // 5. Iniciar Sesión
+        async function loginUser() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            const data = await res.json();
+            
+            if (res.ok) {
+                currentUser = data.user;
+                document.getElementById('login-form').classList.add('hidden');
+                document.getElementById('user-panel').classList.remove('hidden');
+                document.getElementById('logged-email').innerText = currentUser.email;
+                document.getElementById('user-email-display').innerText = `Hola, ${currentUser.email}`;
+                
+                // Renderizar los botones de PayPal ahora que hay sesión iniciada
+                renderCourses();
+                
+                document.getElementById('status-message').innerText = 'Sesión activa. Selecciona un curso y paga con PayPal.';
+                document.getElementById('status-message').className = 'text-xs text-blue-400';
+            } else {
+                alert('Error de acceso: ' + data.error);
+            }
+        }
+
+        // 6. Cerrar Sesión
+        function logoutUser() {
+            currentUser = null;
+            document.getElementById('login-form').classList.remove('hidden');
+            document.getElementById('user-panel').classList.add('hidden');
+            document.getElementById('user-email-display').innerText = 'No ha iniciado sesión';
+            document.getElementById('status-message').innerText = 'Inicia sesión para habilitar los botones de PayPal.';
+            document.getElementById('status-message').className = 'text-xs text-slate-400';
+            renderCourses(); // Recarga los cursos sin botones de pago
+        }
+
+        // Cargar al iniciar
+        fetchCourses();
+    </script>
+</body>
+</html>
